@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oil / Water Gauge 書き込み</title>
+  <script src="./vendor/firmware_hex.js"></script>
+  <script src="./vendor/firmware_hex_v2.js"></script>
+  <script src="./vendor/arduino-web-uploader.js"></script>
+  <style>
+    body { font-family: "Segoe UI", "Yu Gothic UI", sans-serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.55; color: #222; }
+    h1 { font-size: 1.3rem; }
+    .box { border: 1px solid #ccc; border-radius: 8px; padding: 1rem 1.1rem; margin: 1rem 0; background: #fafafa; }
+    button[arduino-uploader] { display: block; width: 100%; margin: 0.55rem 0; padding: 0.85rem 1rem; font-size: 1rem; cursor: pointer; }
+    .ok { color: #0a7; font-weight: 600; }
+    .bad { color: #c30; font-weight: 600; }
+    .note { color: #555; font-size: 0.95rem; }
+    code { background: #eee; padding: 0.1rem 0.35rem; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Oil / Water Gauge — ブラウザ書き込み<br><span class="note">2.42" SSD1309 128x64 テスト用</span></h1>
+  <p id="ctx" class="note">接続状態を確認しています…</p>
+
+  <div class="box">
+    <ol>
+      <li>Nano を USB 接続</li>
+      <li>下のボタンを押す</li>
+      <li>一覧で Nano の <code>COM</code> を選ぶ</li>
+    </ol>
+    <p class="note">Edge / Chrome 専用。書き込み用の exe は使いません。</p>
+  </div>
+
+  <div class="box">
+    <p><strong>A: 通常（列オフセット 0）</strong></p>
+    <button id="btnOld" arduino-uploader board="nanoOldBootloader" verify>
+      書き込む A（Old Bootloader）[<span class="upload-progress"></span>]
+    </button>
+    <button id="btnNew" arduino-uploader board="nano" verify>
+      書き込む A（New Bootloader）[<span class="upload-progress"></span>]
+    </button>
+    <p><strong>B: 画面が右に2pxずれる／Aで砂嵐が残るとき（列オフセット 2）</strong></p>
+    <button id="btnOld2" arduino-uploader board="nanoOldBootloader" verify>
+      書き込む B（Old Bootloader）[<span class="upload-progress"></span>]
+    </button>
+    <button id="btnNew2" arduino-uploader board="nano" verify>
+      書き込む B（New Bootloader）[<span class="upload-progress"></span>]
+    </button>
+  </div>
+
+  <p class="note">パネル: 2.42" OLED / IC SSD1309 / 128x64 / 7pin SPI<br>SCK=D5 SDA=D3 RES=D6 DC=D4 CS=D9　｜　水温・油温 2秒 / 油圧 0.5秒　｜　A0油温 A1油圧 A2水温</p>
+
+  <script>
+    (function () {
+      var ctx = document.getElementById('ctx');
+      var secure = window.isSecureContext;
+      var serial = !!(navigator.serial);
+      if (!secure) {
+        ctx.innerHTML = '<span class="bad">この開き方では書けません。</span> 「手順_PowerShellに貼り付け.txt」の手順で localhost から開いてください。';
+        return;
+      }
+      if (!serial) {
+        ctx.innerHTML = '<span class="bad">Web Serial 非対応</span>（Edge または Chrome で開いてください）';
+        return;
+      }
+      if (!window.FIRMWARE_HEX) {
+        ctx.innerHTML = '<span class="bad">firmware が読み込めません</span>';
+        return;
+      }
+      function urlFor(text) {
+        return URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+      }
+      var urlA = urlFor(window.FIRMWARE_HEX);
+      var urlB = window.FIRMWARE_HEX_V2 ? urlFor(window.FIRMWARE_HEX_V2) : urlA;
+      ['btnOld', 'btnNew'].forEach(function (id) {
+        document.getElementById(id).setAttribute('hex-href', urlA);
+      });
+      ['btnOld2', 'btnNew2'].forEach(function (id) {
+        document.getElementById(id).setAttribute('hex-href', urlB);
+      });
+      ctx.innerHTML = '<span class="ok">準備OK</span> — A から試して、だめなら B';
+    })();
+  </script>
+</body>
+</html>

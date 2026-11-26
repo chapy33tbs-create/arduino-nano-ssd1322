@@ -1,0 +1,76 @@
+【お客様PC】XLoader / IDE 不要
+
+OS が exe を止める・XLoader が失敗する環境向けです。
+Windows 付属の PowerShell に貼り付けるだけです。
+
+
+■ 事前
+1. zip をドキュメントなどへ解凍
+   例: ドキュメント\OilWaterGauge-Windows
+2. Nano を USB 接続
+3. Edge または Chrome があること
+
+
+■ 手順
+1. スタート → 「powershell」→ Windows PowerShell を開く
+2. 下の ==== から ==== までを全部コピーして貼り付け、Enter
+3. 開いたページで「書き込む（Old Bootloader）」
+4. 失敗したら「New Bootloader」
+
+
+==== ここからコピー ====
+Set-Location "$env:USERPROFILE\Documents\OilWaterGauge-Windows"
+if (-not (Test-Path .\flash.html)) {
+  Write-Host "フォルダが見つかりません。今の場所: $(Get-Location)"
+  Write-Host "次を実パスに変えて再実行:"
+  Write-Host "  Set-Location 'C:\実際の場所\OilWaterGauge-Windows'"
+  return
+}
+$port = 8765
+$url = "http://127.0.0.1:$port/flash.html"
+$H = New-Object Net.HttpListener
+$H.Prefixes.Add("http://127.0.0.1:$port/")
+try { $H.Start() } catch {
+  $port = 8766
+  $url = "http://127.0.0.1:$port/flash.html"
+  $H = New-Object Net.HttpListener
+  $H.Prefixes.Add("http://127.0.0.1:$port/")
+  $H.Start()
+}
+$browsers = @(
+  "${env:ProgramFiles}\Microsoft\Edge\Application\msedge.exe",
+  "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+  "${env:ProgramFiles}\Google\Chrome\Application\chrome.exe",
+  "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe"
+)
+$opened = $false
+foreach ($b in $browsers) {
+  if (Test-Path $b) { Start-Process $b $url; $opened = $true; break }
+}
+if (-not $opened) { Start-Process $url }
+Write-Host "Opened $url  /  終わるまでこの窓を閉じない (Ctrl+C で停止)"
+$mime = @{ '.html'='text/html; charset=utf-8'; '.js'='application/javascript; charset=utf-8'; '.hex'='text/plain; charset=utf-8'; '.txt'='text/plain; charset=utf-8' }
+while ($H.IsListening) {
+  $c = $H.GetContext()
+  $p = [Uri]::UnescapeDataString($c.Request.Url.LocalPath.TrimStart('/'))
+  if ([string]::IsNullOrWhiteSpace($p)) { $p = 'flash.html' }
+  $f = Join-Path (Get-Location) ($p -replace '/','\')
+  if (-not (Test-Path -LiteralPath $f -PathType Leaf)) {
+    $c.Response.StatusCode = 404
+    $b404 = [Text.Encoding]::UTF8.GetBytes('404')
+    $c.Response.OutputStream.Write($b404,0,$b404.Length)
+    $c.Response.Close(); continue
+  }
+  $ext = [IO.Path]::GetExtension($f).ToLowerInvariant()
+  $c.Response.ContentType = $(if ($mime.ContainsKey($ext)) { $mime[$ext] } else { 'application/octet-stream' })
+  $bytes = [IO.File]::ReadAllBytes($f)
+  $c.Response.ContentLength64 = $bytes.Length
+  $c.Response.OutputStream.Write($bytes,0,$bytes.Length)
+  $c.Response.Close()
+}
+==== ここまでコピー ====
+
+
+■ パスが Documents 以外のとき
+1行目を次のように変える:
+  Set-Location 'C:\実際の場所\OilWaterGauge-Windows'

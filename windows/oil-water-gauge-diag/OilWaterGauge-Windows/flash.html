@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Oil / Water Gauge 診断ビルド書き込み</title>
+  <script src="./vendor/firmware_hex.js"></script>
+  <script src="./vendor/arduino-web-uploader.js"></script>
+  <style>
+    body { font-family: "Segoe UI", "Yu Gothic UI", sans-serif; max-width: 42rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.55; color: #222; }
+    h1 { font-size: 1.25rem; }
+    .box { border: 1px solid #ccc; border-radius: 8px; padding: 1rem 1.1rem; margin: 1rem 0; background: #fafafa; }
+    button[arduino-uploader] { display: block; width: 100%; margin: 0.55rem 0; padding: 0.85rem 1rem; font-size: 1rem; cursor: pointer; }
+    .ok { color: #0a7; font-weight: 600; }
+    .bad { color: #c30; font-weight: 600; }
+    .note { color: #555; font-size: 0.95rem; }
+    code { background: #eee; padding: 0.1rem 0.35rem; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <h1>Oil / Water Gauge — 診断ビルド書き込み<br><span class="note">SSD1322 (ZJY270S0700XG31) 256x64 専用</span></h1>
+  <p id="ctx" class="note">接続状態を確認しています…</p>
+
+  <div class="box">
+    <ol>
+      <li>Nano を USB 接続し、SSD1322 パネルを配線</li>
+      <li>下のボタンを押す</li>
+      <li>一覧で Nano の <code>COM</code> を選ぶ</li>
+    </ol>
+    <p class="note">Edge / Chrome 専用。書き込み後、画面は 3 秒ごとに 1/3 → 2/3 → 3/3 と切り替わります。</p>
+  </div>
+
+  <div class="box">
+    <button id="btnOld" arduino-uploader board="nanoOldBootloader" verify>
+      書き込む（Old Bootloader）[<span class="upload-progress"></span>]
+    </button>
+    <button id="btnNew" arduino-uploader board="nano" verify>
+      書き込む（New Bootloader）[<span class="upload-progress"></span>]
+    </button>
+  </div>
+
+  <p class="note">パネル: ZJY270S0700XG31 / SSD1322 / 256x64 / CS=D9 RST=D6 SCL=D5 DC=D4 SDA=D3<br>書き込み後の 3 画面をそれぞれ写真に撮ってください。</p>
+
+  <script>
+    (function () {
+      var ctx = document.getElementById('ctx');
+      if (!window.isSecureContext) {
+        ctx.innerHTML = '<span class="bad">この開き方では書けません。</span> HOWTO_PowerShell_Paste.txt の手順で localhost から開いてください。';
+        return;
+      }
+      if (!navigator.serial) {
+        ctx.innerHTML = '<span class="bad">Web Serial 非対応</span>（Edge または Chrome で開いてください）';
+        return;
+      }
+      if (!window.FIRMWARE_HEX) {
+        ctx.innerHTML = '<span class="bad">firmware が読み込めません</span>';
+        return;
+      }
+      var url = URL.createObjectURL(new Blob([window.FIRMWARE_HEX], { type: 'text/plain' }));
+      ['btnOld', 'btnNew'].forEach(function (id) {
+        document.getElementById(id).setAttribute('hex-href', url);
+      });
+      ctx.innerHTML = '<span class="ok">準備OK</span> — 書き込めます';
+    })();
+  </script>
+</body>
+</html>

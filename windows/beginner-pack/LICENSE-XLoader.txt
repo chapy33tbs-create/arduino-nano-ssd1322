@@ -1,0 +1,5 @@
+Third-party: XLoader 2.01
+Source: https://github.com/laurentmas/XLoader
+Inspired by original XLoader by Geir Lunde.
+Bundled as-is for convenience. See upstream repository for license terms.
+avrdude is included with XLoader (see avrdude project licensing).
