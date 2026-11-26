@@ -195,17 +195,69 @@ static void drawSensorCell(uint8_t x, const __FlashStringHelper* label, float va
   u8g2.print(unit);
 }
 #else
+// One-shot fix (2026-11-26): on the production SSD1322 panel the value drawn
+// via Print::print(float) never appears, while labels/units do. A host-side
+// replay of the real U8g2 SSD1322 driver stream confirmed that the same
+// digits DO reach GDDRAM when drawn with drawStr(). So the value is now
+// formatted with integer arithmetic and drawn with drawStr(); the unit is
+// drawn with drawStr() at the same continuation position as before.
+// Nothing else in the drawing or sensor code is changed.
+static void formatValueText(char* buf, float value, uint8_t decimals) {
+  if (!isfinite(value)) {
+    value = 0.0f;
+  }
+  const long scale = (decimals > 0) ? 10L : 1L;
+  long scaled = (long)(value * (float)scale + (value >= 0.0f ? 0.5f : -0.5f));
+  char* p = buf;
+  if (scaled < 0) {
+    *p++ = '-';
+    scaled = -scaled;
+  }
+  long whole = scaled / scale;
+  char tmp[8];
+  uint8_t n = 0;
+  if (whole == 0) {
+    tmp[n++] = '0';
+  }
+  while (whole > 0) {
+    tmp[n++] = (char)('0' + (int)(whole % 10L));
+    whole /= 10L;
+  }
+  while (n > 0) {
+    *p++ = tmp[--n];
+  }
+  if (decimals > 0) {
+    *p++ = '.';
+    *p++ = (char)('0' + (int)(scaled % 10L));
+  }
+  *p = '\0';
+}
+
 static void drawSensorCell(uint8_t x, const __FlashStringHelper* label, float value,
                            uint8_t decimals, const __FlashStringHelper* unit) {
   u8g2.setFont(u8g2_font_helvB12_tr);
   u8g2.setCursor(x, 14);
   u8g2.print(label);
 
+  char numbuf[12];
+  formatValueText(numbuf, value, decimals);
   u8g2.setFont(u8g2_font_logisoso24_tr);
-  u8g2.setCursor(x, 52);
-  u8g2.print(value, decimals);
+  const uint8_t numw = (uint8_t)u8g2.getStrWidth(numbuf);
+  u8g2.drawStr(x, 52, numbuf);
+
+  char unitbuf[8];
+  const char* up = reinterpret_cast<const char*>(unit);
+  uint8_t i = 0;
+  while (i < (uint8_t)(sizeof(unitbuf) - 1)) {
+    const char c = (char)pgm_read_byte(up + i);
+    if (c == '\0') {
+      break;
+    }
+    unitbuf[i++] = c;
+  }
+  unitbuf[i] = '\0';
   u8g2.setFont(u8g2_font_helvB10_tr);
-  u8g2.print(unit);
+  u8g2.drawStr(x + numw, 52, unitbuf);
 }
 #endif
 
